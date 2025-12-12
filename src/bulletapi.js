@@ -57,9 +57,9 @@ export class BulletApi {
         if (typeof middleware !== 'function') {
             throw new Error('Middleware must be a function');
         }
-        // check if middleware has 3 parameters
-        if (middleware.length !== 3) {
-            throw new Error('Middleware must have 3 parameters: (req, res, next)');
+        // check if middleware has 2 or 3 parameters
+        if (middleware.length !== 2 && middleware.length !== 3) {
+            throw new Error('Middleware must have 2 or 3 parameters: (req, res, next) or (req, res)');
         }
         this.#middlewares.push(middleware);
     }

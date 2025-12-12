@@ -9,6 +9,7 @@ A lightweight Node.js web framework, designed for building web applications with
   - [Creating an Application](#creating-an-application)
   - [Routing](#routing)
   - [Middleware](#middleware)
+  - [Body Parsing](#body-parsing)
   - [Request Object](#request-object)
   - [Response Object](#response-object)
   - [Error Handling](#error-handling)
@@ -22,6 +23,7 @@ A lightweight Node.js web framework, designed for building web applications with
 - Automatic query string parsing (`req.query`)
 - Dynamic route parameters (`/users/:id` → `req.params`)
 - Response helpers (`res.json()`, `res.send()`, `res.status()`)
+- Body parsers (JSON, URL-encoded, raw, text)
 - Error handling (automatic try/catch)
 - HTTP methods: GET, POST, PUT, DELETE, HEAD, OPTIONS
 - URL parsing with pathname extraction
@@ -204,6 +206,96 @@ app.get('/test', (req, res) => {
 // Output: First, Second, Handler
 ```
 
+### Body Parsing
+
+BulletApi provides built-in body parsers for handling different content types.
+
+#### JSON Body Parser
+
+Parse JSON request bodies:
+
+```javascript
+import { BulletApi, json } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Use JSON body parser
+app.use(json());
+
+app.post('/api/users', (req, res) => {
+    console.log(req.body); // { name: 'John', email: 'john@example.com' }
+    res.status(201).json({
+        message: 'User created',
+        user: req.body
+    });
+});
+```
+
+#### URL-Encoded Body Parser
+
+Parse URL-encoded form data:
+
+```javascript
+import { BulletApi, urlencoded } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Use URL-encoded body parser
+app.use(urlencoded());
+
+app.post('/api/form', (req, res) => {
+    console.log(req.body); // { username: 'john', password: 'secret' }
+    res.json({ message: 'Form submitted' });
+});
+```
+
+#### Combined Body Parsers
+
+Use multiple body parsers to handle different content types:
+
+```javascript
+import { BulletApi, json, urlencoded } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Parse JSON and URL-encoded bodies
+app.use(json());
+app.use(urlencoded());
+
+app.post('/api/data', (req, res) => {
+    // Handles both application/json and application/x-www-form-urlencoded
+    res.json({ received: req.body });
+});
+```
+
+#### Body Parser Options
+
+Configure body parsers with size limits:
+
+```javascript
+// Limit body size to 100KB
+app.use(json({ limit: 100 * 1024 }));
+
+// Limit URL-encoded bodies to 50KB
+app.use(urlencoded({ limit: 50 * 1024 }));
+```
+
+#### Raw and Text Parsers
+
+For raw buffer or text data:
+
+```javascript
+import { BulletApi, raw, text } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Raw body parser (returns Buffer)
+app.use(raw());
+
+// Text body parser (returns string)
+app.use(text());
+```
+
 ### Request Object
 
 The request object represents the HTTP request and contains properties for the query string, parameters, body, and more.
@@ -215,6 +307,7 @@ The request object represents the HTTP request and contains properties for the q
 - `req.path` - URL pathname
 - `req.query` - Parsed query string parameters
 - `req.params` - Route parameters
+- `req.body` - Parsed request body (requires body parser middleware)
 
 #### Example
 
@@ -340,6 +433,40 @@ Start the HTTP server.
 
 **Returns:** HTTP server instance
 
+### Body Parsers
+
+#### `json([options])`
+Create JSON body parser middleware.
+
+**Parameters:**
+- `options.limit` (Number): Maximum body size in bytes (default: 1MB)
+
+**Returns:** Middleware function
+
+#### `urlencoded([options])`
+Create URL-encoded body parser middleware.
+
+**Parameters:**
+- `options.limit` (Number): Maximum body size in bytes (default: 1MB)
+
+**Returns:** Middleware function
+
+#### `raw([options])`
+Create raw body parser middleware (returns Buffer).
+
+**Parameters:**
+- `options.limit` (Number): Maximum body size in bytes (default: 1MB)
+
+**Returns:** Middleware function
+
+#### `text([options])`
+Create text body parser middleware (returns string).
+
+**Parameters:**
+- `options.limit` (Number): Maximum body size in bytes (default: 1MB)
+
+**Returns:** Middleware function
+
 ## Development Status
 
 | Feature                           | Status              |
@@ -352,7 +479,10 @@ Start the HTTP server.
 | HEAD method support               | Done                |
 | Route params (/:id)               | Done                |
 | Response helpers                  | Done                |
-| JSON body parser                  | Not implemented     |
+| JSON body parser                  | Done                |
+| URL-encoded body parser           | Done                |
+| Raw body parser                   | Done                |
+| Text body parser                  | Done                |
 | Error middleware                  | Not implemented     |
 | Router class                      | Not implemented     |
 | Path matching (wildcards, arrays) | Not implemented     |
