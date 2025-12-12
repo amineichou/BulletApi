@@ -1,19 +1,42 @@
 {
   "name": "bulletapi",
   "version": "1.0.0",
-  "description": "web framework",
+  "description": "A lightweight Node.js web framework with middleware support and route handling",
   "keywords": [
     "web",
-    "framework"
+    "framework",
+    "http",
+    "middleware",
+    "router",
+    "api",
+    "rest"
   ],
   "license": "ISC",
   "author": "amine ichou",
   "type": "module",
   "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "dependencies": {
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amineichou/BulletApi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/amineichou/BulletApi/issues"
+  },
+  "homepage": "https://github.com/amineichou/BulletApi#readme",
+  "devDependencies": {
     "nodemon": "^3.1.11"
   }
 }
