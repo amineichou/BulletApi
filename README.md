@@ -36,11 +36,22 @@ npm install bulletapi
 
 ## Quick Start
 
+**CommonJs Example:**
+```javascript
+const { BulletApi } = require("bulletapi");
+
+const app = new BulletApi();
+```
+
+**ESM Example:**
 ```javascript
 import { BulletApi } from "bulletapi";
 
 const app = new BulletApi();
+```
 
+### Example Application
+```javascript
 // Async middleware
 app.use(async (req, res, next) => {
     console.log(`${req.method} ${req.url}`);
