@@ -1,17 +1,41 @@
 /**
  * Parse JSON body from request
  * @param {Object} req - Node.js request object
+ * @param {number} limit - Maximum body size in bytes
  * @returns {Promise<Object>} - Parsed JSON body
  */
-const parseJSON = (req) => {
+const parseJSON = (req, limit) => {
     return new Promise((resolve, reject) => {
         let body = '';
+        let bytesReceived = 0;
+        let limitExceeded = false;
+        let alreadyResolved = false;
         
         req.on('data', (chunk) => {
+            if (limitExceeded || alreadyResolved) return;
+            
+            bytesReceived += chunk.length;
+            
+            if (bytesReceived > limit) {
+                limitExceeded = true;
+                alreadyResolved = true;
+                
+                // Reject immediately
+                reject(new Error('Payload Too Large'));
+                
+                // Clean up listeners and drain remaining data
+                req.removeAllListeners('data');
+                req.removeAllListeners('end');
+                req.removeAllListeners('error');
+                req.resume();
+                return;
+            }
             body += chunk.toString();
         });
         
         req.on('end', () => {
+            if (limitExceeded || alreadyResolved) return;
+            alreadyResolved = true;
             try {
                 if (body.length === 0) {
                     resolve({});
@@ -24,6 +48,8 @@ const parseJSON = (req) => {
         });
         
         req.on('error', (error) => {
+            if (limitExceeded || alreadyResolved) return;
+            alreadyResolved = true;
             reject(error);
         });
     });
@@ -51,7 +77,7 @@ export const json = (options = {}) => {
         if (contentType && contentType.includes('application/json')) {
             let bodySize = 0;
             
-            // Check content-length if provided
+            // Check content-length if provided (early rejection)
             if (req.headers['content-length']) {
                 bodySize = parseInt(req.headers['content-length'], 10);
                 
@@ -63,10 +89,19 @@ export const json = (options = {}) => {
             }
             
             try {
-                req.body = await parseJSON(req);
+                req.body = await parseJSON(req, limit);
             } catch (error) {
-                res.writeHead(400, { 'Content-Type': 'text/plain' });
-                res.end('Bad Request: Invalid JSON');
+                if (res.headersSent || res.writableEnded) {
+                    return;
+                }
+                
+                if (error.message === 'Payload Too Large') {
+                    res.writeHead(413, { 'Content-Type': 'text/plain' });
+                    res.end('Payload Too Large');
+                } else {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Bad Request: Invalid JSON');
+                }
                 return;
             }
         }
@@ -97,7 +132,7 @@ export const urlencoded = (options = {}) => {
         if (contentType && contentType.includes('application/x-www-form-urlencoded')) {
             let bodySize = 0;
             
-            // Check content-length if provided
+            // Check content-length if provided (early rejection)
             if (req.headers['content-length']) {
                 bodySize = parseInt(req.headers['content-length'], 10);
                 
@@ -110,8 +145,15 @@ export const urlencoded = (options = {}) => {
             
             try {
                 let body = '';
+                let bytesReceived = 0;
                 
                 for await (const chunk of req) {
+                    bytesReceived += chunk.length;
+                    if (bytesReceived > limit) {
+                        // Drain remaining data
+                        req.resume();
+                        throw new Error('Payload Too Large');
+                    }
                     body += chunk.toString();
                 }
                 
@@ -119,8 +161,13 @@ export const urlencoded = (options = {}) => {
                 const params = new URLSearchParams(body);
                 req.body = Object.fromEntries(params);
             } catch (error) {
-                res.writeHead(400, { 'Content-Type': 'text/plain' });
-                res.end('Bad Request: Invalid URL-encoded data');
+                if (error.message === 'Payload Too Large') {
+                    res.writeHead(413, { 'Content-Type': 'text/plain' });
+                    res.end('Payload Too Large');
+                } else {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Bad Request: Invalid URL-encoded data');
+                }
                 return;
             }
         }
@@ -142,7 +189,7 @@ export const raw = (options = {}) => {
     return async (req, res, next) => {
         let bodySize = 0;
         
-        // Check content-length if provided
+        // Check content-length if provided (early rejection)
         if (req.headers['content-length']) {
             bodySize = parseInt(req.headers['content-length'], 10);
             
@@ -155,15 +202,27 @@ export const raw = (options = {}) => {
         
         try {
             const chunks = [];
+            let bytesReceived = 0;
             
             for await (const chunk of req) {
+                bytesReceived += chunk.length;
+                if (bytesReceived > limit) {
+                    // Drain remaining data
+                    req.resume();
+                    throw new Error('Payload Too Large');
+                }
                 chunks.push(chunk);
             }
             
             req.body = Buffer.concat(chunks);
         } catch (error) {
-            res.writeHead(400, { 'Content-Type': 'text/plain' });
-            res.end('Bad Request');
+            if (error.message === 'Payload Too Large') {
+                res.writeHead(413, { 'Content-Type': 'text/plain' });
+                res.end('Payload Too Large');
+            } else {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Bad Request');
+            }
             return;
         }
         
@@ -184,7 +243,7 @@ export const text = (options = {}) => {
     return async (req, res, next) => {
         let bodySize = 0;
         
-        // Check content-length if provided
+        // Check content-length if provided (early rejection)
         if (req.headers['content-length']) {
             bodySize = parseInt(req.headers['content-length'], 10);
             
@@ -197,15 +256,27 @@ export const text = (options = {}) => {
         
         try {
             let body = '';
+            let bytesReceived = 0;
             
             for await (const chunk of req) {
+                bytesReceived += chunk.length;
+                if (bytesReceived > limit) {
+                    // Drain remaining data
+                    req.resume();
+                    throw new Error('Payload Too Large');
+                }
                 body += chunk.toString();
             }
             
             req.body = body;
         } catch (error) {
-            res.writeHead(400, { 'Content-Type': 'text/plain' });
-            res.end('Bad Request');
+            if (error.message === 'Payload Too Large') {
+                res.writeHead(413, { 'Content-Type': 'text/plain' });
+                res.end('Payload Too Large');
+            } else {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Bad Request');
+            }
             return;
         }
         
