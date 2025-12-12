@@ -35,7 +35,8 @@ npm install bulletapi
 ## Quick Start
 
 ```javascript
-import { BulletApi } from './src/bulletapi.js';
+import { BulletApi } from "bulletapi";
+
 const app = new BulletApi();
 
 // Async middleware
