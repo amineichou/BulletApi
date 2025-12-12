@@ -1,0 +1,19 @@
+{
+  "name": "bulletapi",
+  "version": "1.0.0",
+  "description": "web framework",
+  "keywords": [
+    "web",
+    "framework"
+  ],
+  "license": "ISC",
+  "author": "amine ichou",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
