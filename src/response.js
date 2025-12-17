@@ -46,5 +46,15 @@ export const enhanceResponse = (res) => {
         }
     };
 
+    /**
+     * Redirect to another URL
+     * @param {string} url - URL to redirect to
+     * @param {number} statusCode - HTTP status code (default: 302)
+     */
+    res.redirect = function(url, statusCode = 302) {
+        this.writeHead(statusCode, { 'Location': url });
+        this.end();
+    };
+
     return res;
 };

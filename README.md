@@ -5,6 +5,7 @@ A lightweight Node.js web framework, designed for building web applications with
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Shortcuts](#shortcuts)
 - [Usage](#usage)
   - [Creating an Application](#creating-an-application)
   - [Routing](#routing)
@@ -17,16 +18,31 @@ A lightweight Node.js web framework, designed for building web applications with
 - [Development Status](#development-status)
 
 ## Features
+
+### Core Features
 - Middleware pipeline with async support
 - Multiple handlers per route
 - Async/await handler support
 - Automatic query string parsing (`req.query`)
 - Dynamic route parameters (`/users/:id` → `req.params`)
-- Response helpers (`res.json()`, `res.send()`, `res.status()`)
+- Response helpers (`res.json()`, `res.send()`, `res.status()`, `res.redirect()`)
 - Body parsers (JSON, URL-encoded, raw, text)
 - Error handling (automatic try/catch)
 - HTTP methods: GET, POST, PUT, DELETE, HEAD, OPTIONS
 - URL parsing with pathname extraction
+
+### Shortcuts & Utilities
+- **Quick Start** - Start server with one line: `app.quickStart(3000)`
+- **Access Control** - `app.allow()` and `app.ban()` for route protection
+- **Redirects** - Quick redirects: `app.redirect('/old', '/new')`
+- **Route Grouping** - Group routes with common prefix
+- **CORS** - Enable CORS with one line
+- **Logger** - Automatic request logging
+- **Static Files** - Serve static files easily
+- **Rate Limiting** - Protect from API abuse
+- **Basic Auth** - HTTP Basic Authentication
+- **Request Timeout** - Set timeout for requests
+- **Size Limit** - Limit request body size
 
 ## Installation
 
@@ -96,6 +112,287 @@ app.get('/', (req, res) => {
 app.listen(3000, () => {
     console.log('Server running on http://localhost:3000');
 });
+```
+
+## Shortcuts
+
+BulletApi provides powerful shortcuts to make your code cleaner and more concise.
+
+### Quick Start
+
+Start your server with a single function call:
+
+```javascript
+import { BulletApi } from 'bulletapi';
+
+const app = new BulletApi();
+
+app.get('/', (req, res) => {
+    res.send('Hello, World!');
+});
+
+// Instead of app.listen(3000)
+app.quickStart(3000); // Starts server with one line!
+```
+
+### Access Control: Allow & Ban
+
+Control route access with simple one-liners:
+
+```javascript
+// Allow access only if condition is met
+app.get('/admin', 
+    app.allow(req => req.query.admin === 'true', 'Admin access required'),
+    (req, res) => {
+        res.json({ message: 'Welcome admin!' });
+    }
+);
+
+// Ban access if condition is met
+app.get('/content',
+    app.ban(req => req.query.blocked === 'true', 'You are blocked'),
+    (req, res) => {
+        res.json({ message: 'Content here' });
+    }
+);
+
+// Use functions for dynamic checks
+const isAuthenticated = (req) => req.headers.authorization === 'Bearer token';
+
+app.get('/protected',
+    app.allow(isAuthenticated, 'Authentication required'),
+    (req, res) => {
+        res.json({ data: 'secret' });
+    }
+);
+```
+
+### Quick Redirects
+
+Set up redirects in one line:
+
+```javascript
+// Temporary redirect (302)
+app.redirect('/old-page', '/new-page');
+
+// Permanent redirect (301)
+app.redirect('/docs', 'https://github.com/amineichou/BulletApi', 301);
+```
+
+### Route Grouping
+
+Group routes with a common prefix:
+
+```javascript
+app.group('/api/v1', (router) => {
+    router.get('/users', (req, res) => {
+        res.json({ users: [] });
+    });
+    
+    router.post('/users', (req, res) => {
+        res.status(201).json({ message: 'User created' });
+    });
+    
+    router.get('/posts', (req, res) => {
+        res.json({ posts: [] });
+    });
+});
+
+// Creates routes: /api/v1/users, /api/v1/posts
+```
+
+### CORS
+
+Enable CORS with one line:
+
+```javascript
+import { BulletApi, cors } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Simple CORS - allow all origins
+app.use(cors());
+
+// Custom CORS configuration
+app.use(cors({
+    origin: 'https://example.com',
+    methods: 'GET,POST,PUT,DELETE',
+    credentials: true,
+    maxAge: 86400
+}));
+```
+
+### Request Logger
+
+Log all requests automatically:
+
+```javascript
+import { BulletApi, logger } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Short format: "GET /api/users 200 - 15ms"
+app.use(logger({ format: 'short' }));
+
+// Detailed format with timestamp and user agent
+app.use(logger({ format: 'detailed' }));
+```
+
+### Static File Serving
+
+Serve static files from a directory:
+
+```javascript
+import { BulletApi, staticFiles } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Serve files from 'public' directory
+app.use(staticFiles('./public'));
+
+// With custom options
+app.use(staticFiles('./public', {
+    index: 'index.html',
+    dotfiles: 'ignore' // ignore hidden files
+}));
+```
+
+### Rate Limiting
+
+Protect your API from abuse:
+
+```javascript
+import { BulletApi, rateLimit } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Global rate limiting
+app.use(rateLimit({
+    windowMs: 60000,  // 1 minute
+    max: 100,         // 100 requests per minute
+    message: 'Too many requests'
+}));
+
+// Per-route rate limiting
+const limiter = rateLimit({
+    windowMs: 60000,
+    max: 5
+});
+
+app.post('/api/submit', limiter, (req, res) => {
+    res.json({ message: 'Success' });
+});
+```
+
+### Basic Authentication
+
+Add basic auth protection:
+
+```javascript
+import { BulletApi, basicAuth } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Protect specific routes
+app.get('/admin',
+    basicAuth({ username: 'admin', password: 'secret123' }),
+    (req, res) => {
+        res.json({ message: 'Admin panel' });
+    }
+);
+
+// Custom realm
+app.get('/secure',
+    basicAuth({ 
+        username: 'user', 
+        password: 'pass', 
+        realm: 'My Secure Area' 
+    }),
+    (req, res) => {
+        res.json({ data: 'secure data' });
+    }
+);
+```
+
+### Request Timeout
+
+Set timeout for long-running requests:
+
+```javascript
+import { BulletApi, timeout } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Global timeout of 30 seconds
+app.use(timeout(30000));
+
+// Per-route timeout
+app.get('/slow', timeout(5000), async (req, res) => {
+    await slowOperation();
+    res.json({ message: 'Done' });
+});
+```
+
+### Size Limit
+
+Limit request body size:
+
+```javascript
+import { BulletApi, sizeLimit } from 'bulletapi';
+
+const app = new BulletApi();
+
+// Limit to 5MB
+app.use(sizeLimit({ max: 5 * 1024 * 1024 }));
+
+// Per-route size limit
+app.post('/upload', sizeLimit({ max: 10 * 1024 * 1024 }), (req, res) => {
+    res.json({ message: 'Upload successful' });
+});
+```
+
+### Complete Example
+
+```javascript
+import { 
+    BulletApi, 
+    json, 
+    cors, 
+    logger, 
+    rateLimit,
+    basicAuth 
+} from 'bulletapi';
+
+const app = new BulletApi();
+
+// Apply shortcuts
+app.use(logger({ format: 'detailed' }));
+app.use(cors());
+app.use(json());
+
+// Rate limiter
+const limiter = rateLimit({ windowMs: 60000, max: 10 });
+
+// Routes with shortcuts
+app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to BulletApi!' });
+});
+
+app.get('/admin',
+    basicAuth({ username: 'admin', password: 'secret' }),
+    (req, res) => {
+        res.json({ message: 'Admin area' });
+    }
+);
+
+app.post('/api/data', limiter, (req, res) => {
+    res.json({ received: req.body });
+});
+
+app.redirect('/old', '/new');
+
+// Start server
+app.quickStart(3000);
 ```
 
 ## Usage
@@ -444,6 +741,60 @@ Start the HTTP server.
 
 **Returns:** HTTP server instance
 
+#### `app.quickStart(port, [callback])`
+Shortcut to start server with default settings.
+
+**Parameters:**
+- `port` (Number): Port number (default: 3000)
+- `callback` (Function): Optional callback
+
+**Returns:** The app instance for chaining
+
+#### `app.allow(condition, [message])`
+Create middleware to allow access based on condition.
+
+**Parameters:**
+- `condition` (Function|Boolean): Function that receives req and returns boolean, or static boolean
+- `message` (String): Error message if access denied (default: 'Access denied')
+
+**Returns:** Middleware function
+
+#### `app.ban(condition, [message])`
+Create middleware to block access based on condition.
+
+**Parameters:**
+- `condition` (Function|Boolean): Function that receives req and returns boolean, or static boolean
+- `message` (String): Error message if access forbidden (default: 'Access forbidden')
+
+**Returns:** Middleware function
+
+#### `app.redirect(from, to, [statusCode])`
+Create a redirect route.
+
+**Parameters:**
+- `from` (String): Source path
+- `to` (String): Destination path or URL
+- `statusCode` (Number): HTTP status code (default: 302)
+
+**Returns:** The app instance for chaining
+
+#### `app.group(prefix, callback)`
+Group routes with a common prefix.
+
+**Parameters:**
+- `prefix` (String): Common path prefix for all routes in group
+- `callback` (Function): Function that receives router object with route methods
+
+**Returns:** The app instance for chaining
+
+#### `app.global(middleware)`
+Apply middleware globally (alias for `app.use()`).
+
+**Parameters:**
+- `middleware` (Function): Middleware function
+
+**Returns:** The app instance for chaining
+
 ### Body Parsers
 
 #### `json([options])`
@@ -478,23 +829,111 @@ Create text body parser middleware (returns string).
 
 **Returns:** Middleware function
 
+### Shortcut Middleware
+
+#### `cors([options])`
+Enable CORS (Cross-Origin Resource Sharing).
+
+**Parameters:**
+- `options.origin` (String): Allowed origin (default: '*')
+- `options.methods` (String): Allowed methods (default: 'GET,HEAD,PUT,PATCH,POST,DELETE')
+- `options.allowedHeaders` (String): Allowed headers (default: '*')
+- `options.credentials` (Boolean): Allow credentials (default: false)
+- `options.maxAge` (Number): Max age for preflight cache in seconds (default: 86400)
+
+**Returns:** Middleware function
+
+#### `logger([options])`
+Log HTTP requests.
+
+**Parameters:**
+- `options.format` (String): 'short' or 'detailed' (default: 'short')
+
+**Returns:** Middleware function
+
+#### `staticFiles(directory, [options])`
+Serve static files from a directory.
+
+**Parameters:**
+- `directory` (String): Directory path to serve files from
+- `options.index` (String): Index filename (default: 'index.html')
+- `options.dotfiles` (String): How to handle dotfiles: 'ignore' or 'allow' (default: 'ignore')
+
+**Returns:** Middleware function
+
+#### `rateLimit([options])`
+Limit repeated requests from same IP.
+
+**Parameters:**
+- `options.windowMs` (Number): Time window in milliseconds (default: 60000)
+- `options.max` (Number): Max requests per window (default: 100)
+- `options.message` (String): Error message when limit exceeded
+
+**Returns:** Middleware function
+
+#### `basicAuth(options)`
+Add HTTP Basic Authentication.
+
+**Parameters:**
+- `options.username` (String): Required username
+- `options.password` (String): Required password
+- `options.realm` (String): Authentication realm (default: 'Secure Area')
+
+**Returns:** Middleware function
+
+#### `timeout(ms)`
+Set request timeout.
+
+**Parameters:**
+- `ms` (Number): Timeout in milliseconds (default: 30000)
+
+**Returns:** Middleware function
+
+#### `sizeLimit([options])`
+Limit request body size.
+
+**Parameters:**
+- `options.max` (Number): Maximum size in bytes (default: 1048576 = 1MB)
+
+**Returns:** Middleware function
+
+### Response Methods
+
+#### `res.redirect(url, [statusCode])`
+Redirect to another URL.
+
+**Parameters:**
+- `url` (String): Destination URL
+- `statusCode` (Number): HTTP status code (default: 302)
+
 ## Development Status
 
 | Feature                           | Status              |
 | --------------------------------- | ------------------- |
-| Middleware pipeline               | Done                |
-| Multiple handlers per route       | Done                |
-| Async handler support             | Done                |
-| Query parser                      | Done                |
-| Error handling (try/catch)        | Done                |
-| HEAD method support               | Done                |
-| Route params (/:id)               | Done                |
-| Response helpers                  | Done                |
-| JSON body parser                  | Done                |
-| URL-encoded body parser           | Done                |
-| Raw body parser                   | Done                |
-| Text body parser                  | Done                |
-| Error middleware                  | Not implemented     |
-| Router class                      | Not implemented     |
-| Path matching (wildcards, arrays) | Not implemented     |
-| Settings system                   | Not implemented     |
+| Middleware pipeline               | ✅ Done             |
+| Multiple handlers per route       | ✅ Done             |
+| Async handler support             | ✅ Done             |
+| Query parser                      | ✅ Done             |
+| Error handling (try/catch)        | ✅ Done             |
+| HEAD method support               | ✅ Done             |
+| Route params (/:id)               | ✅ Done             |
+| Response helpers                  | ✅ Done             |
+| JSON body parser                  | ✅ Done             |
+| URL-encoded body parser           | ✅ Done             |
+| Raw body parser                   | ✅ Done             |
+| Text body parser                  | ✅ Done             |
+| Quick start shortcut              | ✅ Done             |
+| Access control (allow/ban)        | ✅ Done             |
+| Route redirects                   | ✅ Done             |
+| Route grouping                    | ✅ Done             |
+| CORS middleware                   | ✅ Done             |
+| Logger middleware                 | ✅ Done             |
+| Static file serving               | ✅ Done             |
+| Rate limiting                     | ✅ Done             |
+| Basic authentication              | ✅ Done             |
+| Request timeout                   | ✅ Done             |
+| Size limit                        | ✅ Done             |
+| Error middleware                  | ❌ Not implemented  |
+| Router class                      | ❌ Not implemented  |
+| Path matching (wildcards, arrays) | ❌ Not implemented  |
+| Settings system                   | ❌ Not implemented  |

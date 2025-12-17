@@ -94,6 +94,73 @@ export class BulletApi {
         this.#routes.push({ method: 'OPTIONS', path, handlers });
     }
 
+    // Shortcut: Quick start server with default settings
+    quickStart(port = 3000, callback) {
+        this.listen(port, callback);
+        return this;
+    }
+
+    // Shortcut: Allow access to route based on condition
+    allow(condition, message = 'Access denied') {
+        return (req, res, next) => {
+            const allowed = typeof condition === 'function' ? condition(req) : condition;
+            if (allowed) {
+                next();
+            } else {
+                res.status(403).json({ error: message });
+            }
+        };
+    }
+
+    // Shortcut: Ban access to route based on condition
+    ban(condition, message = 'Access forbidden') {
+        return (req, res, next) => {
+            const banned = typeof condition === 'function' ? condition(req) : condition;
+            if (!banned) {
+                next();
+            } else {
+                res.status(403).json({ error: message });
+            }
+        };
+    }
+
+    // Shortcut: Quick redirect
+    redirect(from, to, statusCode = 302) {
+        this.get(from, (req, res) => {
+            res.redirect(to, statusCode);
+        });
+        return this;
+    }
+
+    // Shortcut: Apply middleware to all routes
+    global(middleware) {
+        this.use(middleware);
+        return this;
+    }
+
+    // Shortcut: Group routes with common prefix
+    group(prefix, callback) {
+        const originalMethods = {
+            get: this.get.bind(this),
+            post: this.post.bind(this),
+            put: this.put.bind(this),
+            delete: this.delete.bind(this),
+            head: this.head.bind(this),
+            options: this.options.bind(this)
+        };
+
+        // Create temporary methods that prepend the prefix
+        const tempRouter = {};
+        Object.keys(originalMethods).forEach(method => {
+            tempRouter[method] = (path, ...handlers) => {
+                originalMethods[method](prefix + path, ...handlers);
+            };
+        });
+
+        callback(tempRouter);
+        return this;
+    }
+
     handleRequest(req, res) {
         // Parse URL to handle query strings properly
         const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
